@@ -9,11 +9,12 @@ var vrEffect, renderer;
 var vrControl, monoControl;
 var modeVR = false;
 
-var keyColor = new THREE.Color('orange');
-//var glowColor = new THREE.Color('orange');
-
 var outColor = 0xdd380c;
 var inColor = 0x154492;
+
+var safeColor = new THREE.Color('lawngreen');
+var warnColor = new THREE.Color('orange');
+var dangerColor = new THREE.Color('red');
 
 var origin = new THREE.Vector3(0, 0, 0);
 
@@ -25,7 +26,7 @@ var domains = [];
 
 var shaders = new ShaderLoader('shaders');
 
-var socket = io.connect('http://localhost:3000');
+var socket = io.connect('http://' + location.hostname + ':3000');
 
 function constrain(v, min, max) {
     if (v < min) {
@@ -170,7 +171,7 @@ function rotest() {
     console.log(camera.rotation.x, camera.rotation.y, camera.rotation.z);
 }
 
-function createGate() {
+function createGate(color) {
     /*
     var cylinderTexture = new THREE.ImageUtils.loadTexture('image/Band.png');
     cylinderTexture.repeat.set(5, 1);
@@ -180,7 +181,7 @@ function createGate() {
 
     var cylinderMaterial = new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
-        color: keyColor
+        color: color
         //map: cylinderTexture,
         //transparent: true,
         //opacity: 0.5
@@ -286,13 +287,23 @@ function createGate() {
  * https://github.com/dataarts/armsglobe
  */
 function createLine(src, dst, packet) {
-    //var lineGeometry = makeConnectionLineGeometry(src, dst, packet.length);
-    var vSub = src.clone().sub(dst);
-    var direction = [{axis: 'x', value: Math.abs(vSub.x)}, {axis: 'y', value: Math.abs(vSub.y)}, {axis: 'z', value: Math.abs(vSub.z)}];
-    var sorted = [].slice.call(direction).sort(function(a, b){return a.value < b.value;});
-    //console.log('sorted', sorted);
-
     var lineGeometry = new THREE.Geometry();
+
+    var vSub = src.clone().sub(dst);
+    var direction = [{
+        axis: 'x',
+        value: Math.abs(vSub.x)
+    }, {
+        axis: 'y',
+        value: Math.abs(vSub.y)
+    }, {
+        axis: 'z',
+        value: Math.abs(vSub.z)
+    }];
+    var sorted = [].slice.call(direction).sort(function(a, b) {
+        return a.value < b.value;
+    });
+    //console.log('sorted', sorted);
 
     //頂点座標を追加していく
     var corner = src.clone();
@@ -303,7 +314,6 @@ function createLine(src, dst, packet) {
         corner[sorted[index].axis] = dst[sorted[index].axis];
         lineGeometry.vertices.push(corner.clone());
     }
-    //console.log('lineGeometry', lineGeometry);
 
     var lineColor = packet.info.srcaddr === '192.168.1.2' ? new THREE.Color(outColor) : new THREE.Color(inColor);
 
@@ -479,7 +489,7 @@ function init() {
     addAxisGrid();
     helper = true;
 
-    var gate = createGate();
+    var gate = createGate(safeColor);
     scene.add(gate);
     domains.push({
         hostname: ['localhost'],
@@ -523,7 +533,7 @@ function init() {
 }
 
 socket.on('msg', function(packet) {
-    //console.log('packet', packet);
+    console.log('packet', packet);
     var isNew = true;
     var temp = packet.hostname[0].split('.');
     var domain = temp[temp.length - 2] + '.' + temp[temp.length - 1];
@@ -538,7 +548,7 @@ socket.on('msg', function(packet) {
         }
     }
     if (isNew) {
-        var gate = createGate();
+        var gate = createGate(warnColor);
         gate.position.set(
             Math.random() * 20000 - 10000,
             Math.random() * 20000 - 10000,
@@ -567,4 +577,3 @@ shaders.load('fs-gate', 'gate', 'fragment');
 
 shaders.load('vs-line', 'line', 'vertex');
 shaders.load('fs-line', 'line', 'fragment');
-

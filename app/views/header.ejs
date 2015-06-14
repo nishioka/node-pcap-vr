@@ -11,6 +11,9 @@
     <% if (ENV_DEVELOPMENT) { %>
         <script src="http://localhost:35729/livereload.js"></script>
     <% } %>
+    <script type="text/javascript">
+        var hostAddress = '<%= hostAddress %>';
+    </script>
 
     <script src="js/three.min.js" charset="utf-8" type="text/javascript"></script>
     <script src="js/libs/tween.min.js" charset="utf-8" type="text/javascript"></script>
