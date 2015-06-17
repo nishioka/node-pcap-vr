@@ -74,7 +74,7 @@ function animate() {
     requestAnimationFrame(animate);
 
     //THREE.SceneUtils.traverseHierarchy(conenecters,
-    scene.traverse(function(mesh) {
+    scene.traverse(function (mesh) {
         if (mesh.update !== undefined) {
             mesh.update();
         }
@@ -95,14 +95,14 @@ function onWindowResize() {
 function changeMode(mode) {
     console.log('changing mode: ' + mode);
     switch (mode) {
-        case 'mono':
-            modeVR = false;
-            //renderer.setSize(window.innerWidth, window.innerHeight);
-            break;
-        case 'vr':
-            modeVR = true;
-            //vrEffect.setSize(window.innerWidth, window.innerHeight);
-            break;
+    case 'mono':
+        modeVR = false;
+        //renderer.setSize(window.innerWidth, window.innerHeight);
+        break;
+    case 'vr':
+        modeVR = true;
+        //vrEffect.setSize(window.innerWidth, window.innerHeight);
+        break;
     }
 }
 
@@ -131,9 +131,9 @@ function onkey(event) {
 
 function vrDetect() {
     var hmdDevice, positionDevice;
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
         if (navigator.getVRDevices) {
-            navigator.getVRDevices().then(function(devices) {
+            navigator.getVRDevices().then(function (devices) {
 
                 //console.log(JSON.stringify(devices));
 
@@ -176,15 +176,15 @@ function createGate(color) {
     var cylinderTexture = new THREE.ImageUtils.loadTexture('image/Band.png');
     cylinderTexture.repeat.set(5, 1);
     cylinderTexture.offset.x = Math.random();
-*/
+    */
     var gate = new THREE.Object3D();
 
     var cylinderMaterial = new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
         color: color
-        //map: cylinderTexture,
-        //transparent: true,
-        //opacity: 0.5
+            //map: cylinderTexture,
+            //transparent: true,
+            //opacity: 0.5
     });
 
     var sphere = new THREE.Object3D();
@@ -300,7 +300,7 @@ function createLine(src, dst, packet) {
         axis: 'z',
         value: Math.abs(vSub.z)
     }];
-    var sorted = [].slice.call(direction).sort(function(a, b) {
+    var sorted = [].slice.call(direction).sort(function (a, b) {
         return a.value < b.value;
     });
     //console.log('sorted', sorted);
@@ -401,7 +401,7 @@ function createLine(src, dst, packet) {
         depthTest: true,
         depthWrite: false,
         transparent: true
-        // sizeAttenuation: true,
+            // sizeAttenuation: true,
     });
 
     particlesGeo.colors = particleColors;
@@ -418,7 +418,7 @@ function createLine(src, dst, packet) {
         valuesColor[v] = particleColors[v];
     }
 
-    pSystem.update = function() {
+    pSystem.update = function () {
         for (var i in this.geometry.vertices) {
             var particle = this.geometry.vertices[i];
             var path = particle.path;
@@ -505,23 +505,23 @@ function init() {
     var enterVr = document.getElementById('enterVR');
     // when VR is not detected
     var getVr = document.getElementById('getVR');
-    vrDetect().then(function() {
+    vrDetect().then(function () {
         // vr detected
         getVr.classList.add('display-none');
-    }, function() {
+    }, function () {
         // displays when VR is not detected
         enterVr.classList.add('display-none');
         getVr.classList.remove('display-none');
     });
 
     // VRボタンクリックでfull-screen VR mode
-    enterVr.addEventListener('click', function() {
+    enterVr.addEventListener('click', function () {
         changeMode('vr');
         vrEffect.setFullScreen(true);
     }, false);
 
     // 画面ダブルクリックでfull-screen VR mode
-    window.addEventListener('dblclick', function() {
+    window.addEventListener('dblclick', function () {
         changeMode('vr');
         vrEffect.setFullScreen(true);
     }, false);
@@ -532,7 +532,7 @@ function init() {
     requestAnimationFrame(animate);
 }
 
-socket.on('msg', function(packet) {
+socket.on('msg', function (packet) {
     console.log('packet', packet);
     var isNew = true;
     var temp = packet.hostname[0].split('.');
@@ -541,7 +541,7 @@ socket.on('msg', function(packet) {
         if (domains[i].domain === domain) {
             isNew = false;
             domains[i].hostname.push(packet.hostname[0]);
-            domains[i].hostname = domains[i].hostname.filter(function(x, i, self) {
+            domains[i].hostname = domains[i].hostname.filter(function (x, i, self) {
                 return self.indexOf(x) === i;
             });
             break;
@@ -568,7 +568,7 @@ socket.on('msg', function(packet) {
     //console.log('domains', domains);
 });
 
-shaders.shaderSetLoaded = function() {
+shaders.shaderSetLoaded = function () {
     init();
 };
 
