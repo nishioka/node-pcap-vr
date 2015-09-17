@@ -1,4 +1,4 @@
-/* global THREE:false, TWEEN:false, io:false, ShaderLoader:false, Promise:false, HMDVRDevice:false, PositionSensorVRDevice:false */
+/*global THREE:false, TWEEN:false, io:false, ShaderLoader:false, Promise:false, HMDVRDevice:false, PositionSensorVRDevice:false*/
 
 'use strict';
 
@@ -112,6 +112,11 @@ function handleFullScreenChange() {
     }
 }
 
+//logs camera pos when h is pressed
+function rotest() {
+    console.log(camera.rotation.x, camera.rotation.y, camera.rotation.z);
+}
+
 function onkey(event) {
     event.preventDefault();
 
@@ -127,48 +132,6 @@ function onkey(event) {
             addAxisGrid();
         }
     }
-}
-
-function vrDetect() {
-    var hmdDevice, positionDevice;
-    return new Promise(function (resolve, reject) {
-        if (navigator.getVRDevices) {
-            navigator.getVRDevices().then(function (devices) {
-
-                //console.log(JSON.stringify(devices));
-
-                for (var i = 0; i < devices.length; ++i) {
-                    if (devices[i] instanceof HMDVRDevice && !hmdDevice) {
-                        hmdDevice = devices[i];
-                        console.log('found head mounted display device');
-                        console.log('hmdDevice(devices[' + i + ']', hmdDevice);
-                    }
-
-                    if (devices[i] instanceof PositionSensorVRDevice &&
-                        devices[i].hardwareUnitId === hmdDevice.hardwareUnitId && !positionDevice) {
-                        positionDevice = devices[i];
-                        console.log('found motion tracking devices');
-                        console.log('positionDevice(devices[' + i + ']', positionDevice);
-                        //break;
-                    }
-                    //console.log(JSON.stringify(devices[i]));
-                }
-
-                if (hmdDevice && positionDevice) {
-                    resolve();
-                    return;
-                }
-                reject('no VR devices found!');
-            });
-        } else {
-            reject('no VR implementation found!');
-        }
-    });
-}
-
-//logs camera pos when h is pressed
-function rotest() {
-    console.log(camera.rotation.x, camera.rotation.y, camera.rotation.z);
 }
 
 function createGate(color) {
@@ -285,6 +248,10 @@ function createGate(color) {
 
 /**
  * https://github.com/dataarts/armsglobe
+ * @param   {Vecter3} src    coordinates of localhost gate object
+ * @param   {Vecter3} dst    coordinates of remote host gate object
+ * @param   {Object} packet  packet data
+ * @returns {Object3D}       line object
  */
 function createLine(src, dst, packet) {
     var lineGeometry = new THREE.Geometry();
@@ -303,7 +270,6 @@ function createLine(src, dst, packet) {
     var sorted = [].slice.call(direction).sort(function (a, b) {
         return a.value < b.value;
     });
-    //console.log('sorted', sorted);
 
     //頂点座標を追加していく
     var corner = src.clone();
@@ -315,7 +281,7 @@ function createLine(src, dst, packet) {
         lineGeometry.vertices.push(corner.clone());
     }
 
-    var lineColor = packet.info.srcaddr === '192.168.1.2' ? new THREE.Color(outColor) : new THREE.Color(inColor);
+    var lineColor = packet.info.srcaddr === hostAddress ? new THREE.Color(outColor) : new THREE.Color(inColor);
 
     // grab the colors from the vertices
     var lineColors = [];
@@ -365,7 +331,7 @@ function createLine(src, dst, packet) {
         linewidth: 1
     });
     var connectOutline = new THREE.Line(lineGeometry, connectMaterial);
-    connectOutline.renderDepth = false;
+    connectOutline.renderOrder = false;
 
     var attributes = {
         size: {
@@ -377,6 +343,7 @@ function createLine(src, dst, packet) {
             value: []
         }
     };
+    particlesGeo.attributes = attributes;
 
     var lineParticleMaterial = new THREE.ShaderMaterial({
         uniforms: {
@@ -393,7 +360,6 @@ function createLine(src, dst, packet) {
                 value: new THREE.ImageUtils.loadTexture('img/particleA.png')
             }
         },
-        attributes: attributes,
         vertexShader: shaders.vs.line,
         fragmentShader: shaders.fs.line,
 
@@ -401,11 +367,11 @@ function createLine(src, dst, packet) {
         depthTest: true,
         depthWrite: false,
         transparent: true
-            // sizeAttenuation: true,
+        // sizeAttenuation: true,
     });
 
     particlesGeo.colors = particleColors;
-    var pSystem = new THREE.PointCloud(particlesGeo, lineParticleMaterial);
+    var pSystem = new THREE.Points(particlesGeo, lineParticleMaterial);
     pSystem.dynamic = true;
     connectOutline.add(pSystem);
 
@@ -445,6 +411,90 @@ function createLine(src, dst, packet) {
     };
 
     return connectOutline;
+}
+
+// https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/Sprite-Text-Labels.html
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+}
+
+function makeTextSprite(message, parameters) {
+    if (parameters === undefined) parameters = {};
+
+    var fontface = parameters.hasOwnProperty('fontface') ?
+        parameters['fontface'] : 'Arial';
+
+    var fontsize = parameters.hasOwnProperty('fontsize') ?
+        parameters['fontsize'] : 72;
+
+    var borderThickness = parameters.hasOwnProperty('borderThickness') ?
+        parameters['borderThickness'] : 4;
+
+    var borderColor = parameters.hasOwnProperty('borderColor') ?
+        parameters['borderColor'] : {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 1.0
+        };
+
+    var backgroundColor = parameters.hasOwnProperty('backgroundColor') ?
+        parameters['backgroundColor'] : {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 1.0
+        };
+
+    //var spriteAlignment = THREE.SpriteAlignment.topLeft;
+
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    context.font = 'Bold ' + fontsize + 'px ' + fontface;
+
+    // get size data (height depends only on font size)
+    var metrics = context.measureText(message);
+    var textWidth = metrics.width;
+
+    // background color
+    context.fillStyle = 'rgba(' + backgroundColor.r + ',' + backgroundColor.g + ',' + backgroundColor.b + ',' + backgroundColor.a + ')';
+    // border color
+    context.strokeStyle = 'rgba(' + borderColor.r + ',' + borderColor.g + ',' + borderColor.b + ',' + borderColor.a + ')';
+
+    context.lineWidth = borderThickness;
+    roundRect(context, borderThickness / 2, borderThickness / 2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+    // 1.4 is extra height factor for text below baseline: g,j,p,q.
+
+    // text color
+    context.fillStyle = 'rgba(0, 0, 0, 1.0)';
+
+    context.fillText(message, borderThickness, fontsize + borderThickness);
+
+    // canvas contents will be used for a texture
+    var texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+
+    var spriteMaterial = new THREE.SpriteMaterial({
+        map: texture,
+        //useScreenCoordinates: false,
+        //alignment: spriteAlignment
+    });
+    var sprite = new THREE.Sprite(spriteMaterial);
+
+    sprite.scale.set(100, 50, 1.0);
+    return sprite;
 }
 
 function init() {
@@ -505,7 +555,7 @@ function init() {
     var enterVr = document.getElementById('enterVR');
     // when VR is not detected
     var getVr = document.getElementById('getVR');
-    vrDetect().then(function () {
+    VRClient.getVR.then(function () {
         // vr detected
         getVr.classList.add('display-none');
     }, function () {
@@ -532,11 +582,17 @@ function init() {
     requestAnimationFrame(animate);
 }
 
-socket.on('msg', function (packet) {
-    console.log('packet', packet);
+socket.on('packet', function (packet) {
+    //console.log('packet', packet);
     var isNew = true;
     var temp = packet.hostname[0].split('.');
-    var domain = temp[temp.length - 2] + '.' + temp[temp.length - 1];
+    //console.log('hostname', packet.hostname);
+    var domain;
+    if (temp[temp.length - 1] === 'com' || temp[temp.length - 1] === 'net' || temp[temp.length - 1] === 'org') {
+        domain = temp[temp.length - 2] + '.' + temp[temp.length - 1];
+    } else {
+        domain = temp[temp.length - 3] + '.' + temp[temp.length - 2] + '.' + temp[temp.length - 1];
+    }
     for (var i = 0, len = domains.length; i < len; i++) {
         if (domains[i].domain === domain) {
             isNew = false;
@@ -547,6 +603,7 @@ socket.on('msg', function (packet) {
             break;
         }
     }
+    console.log('domains', domains);
     if (isNew) {
         var gate = createGate(warnColor);
         gate.position.set(
@@ -555,6 +612,26 @@ socket.on('msg', function (packet) {
             Math.random() * 20000 - 10000
         );
         scene.add(gate);
+
+        var spritey = makeTextSprite(
+            domain, {
+                fontsize: 96,
+                borderColor: {
+                    r: 255,
+                    g: 0,
+                    b: 0,
+                    a: 1.0
+                },
+                backgroundColor: {
+                    r: 255,
+                    g: 100,
+                    b: 100,
+                    a: 0.8
+                }
+            }
+        );
+        spritey.position.set(gate.position.x + 1000, gate.position.y + 1000, gate.position.z + 1000);
+        scene.add(spritey);
 
         var line = createLine(origin, gate.position, packet);
         conenecters.add(line);
@@ -566,6 +643,42 @@ socket.on('msg', function (packet) {
         });
     }
     //console.log('domains', domains);
+});
+
+var rotate = new THREE.Vector3();
+var rotateTemp = new THREE.Vector3();
+var rotateDelta = new THREE.Vector3();
+socket.on('sensor', function (sensor) {
+    //console.log(sensor);
+
+    if (monoControl.enabled === true) {
+
+        if (monoControl.noRotate === true) { return; }
+
+        if (typeof sensor.gyro !== 'undefined') {
+            rotate.set(sensor.gyro.x, sensor.gyro.y, sensor.gyro.z);
+            rotateDelta.subVectors( rotate, rotateTemp );
+
+            monoControl.rotateUp(Math.PI / 180 * rotateDelta.x);
+            monoControl.rotateLeft(Math.PI / 180 * rotateDelta.z);
+
+            rotateTemp.set(sensor.gyro.x, sensor.gyro.y, sensor.gyro.z);
+        }
+
+/*
+        if (monoControl.noZoom === true) { return; }
+
+        if (dollyDelta.y > 0) {
+            monoControl.dollyIn();
+        } else if (dollyDelta.y < 0) {
+            monoControl.dollyOut();
+        }
+
+        if (monoControl.noPan === true) { return; }
+
+        monoControl.pan(panDelta.x, panDelta.y);
+*/
+    }
 });
 
 shaders.shaderSetLoaded = function () {

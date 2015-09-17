@@ -6,7 +6,7 @@ var express = require('express'),
 var app = express();
 
 module.exports.server = app.listen(config.port);
-//console.log('app',module);
+module.exports.io = require('socket.io').listen(module.exports.server);
 
 require('./config/express')(app, config);
 

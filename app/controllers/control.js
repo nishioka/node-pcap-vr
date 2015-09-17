@@ -1,16 +1,16 @@
 'use strict';
 
-var express = require('express'),
-  router = express.Router();
+var express = require('express');
+var router = express.Router();
 
-var dns = require('dns');
 var os = require('os');
 var util = require('util');
 
-var io = require('socket.io').listen(require.main.exports.server);
+var io = require.main.exports.io;
+
 io.sockets.on('connection', function(socket) {
-    socket.on('msg', function(data) {
-        io.sockets.emit('msg', data);
+    socket.on('sensor', function(data) { // センサーデータを受け取った際のハンドラ
+        io.sockets.emit('sensor', data);
     });
 });
 
@@ -18,24 +18,8 @@ module.exports = function (app) {
   app.use('/', router);
 };
 
-var Cap = require('cap').Cap,
-    decoders = require('cap').decoders,
-    PROTOCOL = decoders.PROTOCOL;
-var cap = new Cap();
-
 var linkType;
 var buffer = new Buffer(65535);
-var hostAddress;
-dns.lookup(os.hostname(), function (err, address) {
-    hostAddress = address;
-    linkType = cap.open(
-        Cap.findDevice(address),
-        'tcp and port 80',
-        10 * 1024 * 1024,
-        buffer
-    );
-    cap.setMinBytes && cap.setMinBytes(0);
-});
 
 var emitPacket = function(packet) {
     return function(err, addresse) {
@@ -46,6 +30,7 @@ var emitPacket = function(packet) {
     };
 };
 
+/*
 cap.on('packet', function(nbytes, trunc) {
     var packet = {};
     packet.length = nbytes;
@@ -91,10 +76,11 @@ cap.on('packet', function(nbytes, trunc) {
         dns.reverse(packet.info.dstaddr, emitPacket(packet));
     }
 });
+*/
 
-router.get('/', function (req, res, next) {
-    res.render('index', {
-        hostAddress: hostAddress
+router.get('/control', function (req, res, next) {
+    res.render('control', {
+        //hostAddress: hostAddress
     });
 });
 
