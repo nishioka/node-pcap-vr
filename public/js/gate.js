@@ -24,6 +24,7 @@ var helper, axis, grid;
 
 var domains = [];
 
+var texloader = new THREE.TextureLoader();
 var shaders = new ShaderLoader('shaders');
 
 var socket = io.connect('http://' + location.hostname + ':3000');
@@ -166,80 +167,76 @@ function createGate(color) {
     }
     gate.add(sphere);
 
-    var interGateGeometry = new THREE.PlaneBufferGeometry(600, 600, 100, 100);
-    var interGateMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            texture: {
-                type: 't',
-                value: new THREE.ImageUtils.loadTexture('img/InterGate.png')
-            },
-            uSphereRadius2: {
-                type: 'f',
-                value: 500
-            },
-            cutZ: {
-                type: 'f',
-                value: 430
-            }
-        },
-        vertexShader: shaders.vs.gate,
-        fragmentShader: shaders.fs.gate,
-        //wireframe: true
-        side: THREE.DoubleSide,
-        transparent: true
-    });
-    var interGateMesh = new THREE.Mesh(interGateGeometry, interGateMaterial);
-
     var plate = new THREE.Object3D();
 
-    interGateMesh.position.z += 450;
-    plate.add(interGateMesh);
-
-    var newMesh = interGateMesh.clone();
-    newMesh.position.z += 20;
-    plate.add(newMesh);
-
-    newMesh = interGateMesh.clone();
-    newMesh.position.z += 40;
-    plate.add(newMesh);
-
-    var gateGeometry = new THREE.PlaneBufferGeometry(1000, 1000, 100, 100);
-    var gateMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            texture: {
-                type: 't',
-                value: new THREE.ImageUtils.loadTexture('img/Gate.png')
+    texloader.load('img/InterGate.png', function(texture) {
+        var interGateGeometry = new THREE.PlaneBufferGeometry(600, 600, 100, 100);
+        var interGateMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                texture: {
+                    type: 't',
+                    value: texture
+                },
+                uSphereRadius2: {
+                    type: 'f',
+                    value: 500
+                }
             },
-            uSphereRadius2: {
-                type: 'f',
-                value: 800
-            },
-            cutZ: {
-                type: 'f',
-                value: 630
-            }
-        },
-        vertexShader: shaders.vs.gate,
-        fragmentShader: shaders.fs.gate,
-        //wireframe: true
-        side: THREE.DoubleSide,
-        transparent: true
+            vertexShader: shaders.vs.gate,
+            fragmentShader: shaders.fs.gate,
+            //wireframe: true
+            side: THREE.DoubleSide,
+            transparent: true
+        });
+        var interGateMesh = new THREE.Mesh(interGateGeometry, interGateMaterial);
+
+        interGateMesh.position.z += 450;
+        plate.add(interGateMesh);
+
+        var newMesh = interGateMesh.clone();
+        newMesh.position.z += 20;
+        plate.add(newMesh);
+
+        newMesh = interGateMesh.clone();
+        newMesh.position.z += 40;
+        plate.add(newMesh);
     });
-    var gateMesh = new THREE.Mesh(gateGeometry, gateMaterial);
-    gateMesh.position.z += 20;
-    plate.add(gateMesh);
 
-    var newObj = plate.clone();
-    newObj.rotation.y = Math.PI;
-    plate.add(newObj);
+    texloader.load('img/Gate.png', function(texture) {
+        var gateGeometry = new THREE.PlaneBufferGeometry(1000, 1000, 100, 100);
+        var gateMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                texture: {
+                    type: 't',
+                    value: texture
+                },
+                uSphereRadius2: {
+                    type: 'f',
+                    value: 800
+                }
+            },
+            vertexShader: shaders.vs.gate,
+            fragmentShader: shaders.fs.gate,
+            //wireframe: true
+            side: THREE.DoubleSide,
+            transparent: true
+        });
+        var gateMesh = new THREE.Mesh(gateGeometry, gateMaterial);
+        gateMesh.position.z += 20;
+        plate.add(gateMesh);
 
-    var ObjX = plate.clone();
-    var ObjY = plate.clone();
-    ObjX.rotation.y = Math.PI / 2;
-    ObjY.rotation.x = Math.PI / 2;
+        var newObj = plate.clone();
+        newObj.rotation.y = Math.PI;
+        plate.add(newObj);
 
-    plate.add(ObjX);
-    plate.add(ObjY);
+        var ObjX = plate.clone();
+        var ObjY = plate.clone();
+        ObjX.rotation.y = Math.PI / 2;
+        ObjY.rotation.x = Math.PI / 2;
+
+        plate.add(ObjX);
+        plate.add(ObjY);
+    });
 
     gate.add(plate);
 
@@ -254,8 +251,18 @@ function createGate(color) {
  * @returns {Object3D}       line object
  */
 function createLine(src, dst, packet) {
+    var line = new THREE.Object3D();
+    
+    //GATEを結ぶ線を直角にひく
     var lineGeometry = new THREE.Geometry();
+    //var lineColors = [];
+    var lineColor = packet.info.srcaddr === hostAddress ? new THREE.Color(outColor) : new THREE.Color(inColor);
 
+    //まずは始点
+    var corner = src.clone();
+    lineGeometry.vertices.push(corner.clone());
+
+    //始点と終点の差を取り、xyz成分を小さい順に並べ替える
     var vSub = src.clone().sub(dst);
     var direction = [{
         axis: 'x',
@@ -270,35 +277,44 @@ function createLine(src, dst, packet) {
     var sorted = [].slice.call(direction).sort(function (a, b) {
         return a.value < b.value;
     });
-
-    //頂点座標を追加していく
-    var corner = src.clone();
-    lineGeometry.vertices.push(corner.clone());
-
-    for (var index = 0; index < 3; index++) {
-        //console.log('axis', sorted[index].axis, dst[sorted[index].axis]);
-        corner[sorted[index].axis] = dst[sorted[index].axis];
+    //xyzのそれぞれの成分だけを持った直線でGATEを結ぶgeometryを作る
+    for (var axis = 0; axis < 3; axis++) {
+        corner[sorted[axis].axis] = dst[sorted[axis].axis];
         lineGeometry.vertices.push(corner.clone());
+        //lineColors.push(lineColor);
     }
-
-    var lineColor = packet.info.srcaddr === hostAddress ? new THREE.Color(outColor) : new THREE.Color(inColor);
 
     // grab the colors from the vertices
-    var lineColors = [];
-    for (s in lineGeometry.vertices) {
-        //var v = lineGeometry.vertices[s];
-        lineColors.push(lineColor);
-    }
-    lineGeometry.colors = lineColors;
+    //var lineVerticesMax = lineGeometry.vertices.length;
 
-    var particlesGeo = new THREE.Geometry();
+    //lineGeometry.colors = lineColors;
+
+    // make a final mesh out of this composite
+    var connectMaterial = new THREE.LineBasicMaterial({
+        //color: 0xffffff,
+        color: lineColor,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+        //vertexColors: true,
+        linewidth: 1
+    });
+    var connectLine = new THREE.Line(lineGeometry, connectMaterial);
+    connectLine.renderOrder = false;
+
+    line.add(connectLine);
+
+    //線上を移動する光点
+    var particlesGeometry = new THREE.Geometry();
     var particleColor = lineColor.clone();
     var points = lineGeometry.vertices;
-    var particleCount = Math.floor(80 / lineGeometry.vertices.length) + 1;
-    particleCount = constrain(particleCount, 1, 100);
-    var particleSize = 20;
-
+    var particleSize = 40;
     var particleColors = [];
+
+    var particleCount = Math.floor(80 / 3) + 1;
+    particleCount = constrain(particleCount, 1, 100);
+    console.log('particleCount', particleCount);
     for (var s = 0; s < particleCount; s++) {
         // var rIndex = Math.floor( Math.random() * points.length );
         // var rIndex = Math.min(s,points.length-1);
@@ -315,23 +331,10 @@ function createLine(src, dst, packet) {
         }
         particle.lerpN = 0;
         particle.path = points;
-        particlesGeo.vertices.push(particle);
+        particlesGeometry.vertices.push(particle);
         particle.size = particleSize;
         particleColors.push(particleColor);
     }
-
-    // make a final mesh out of this composite
-    var connectMaterial = new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        opacity: 1.0,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false,
-        vertexColors: true,
-        linewidth: 1
-    });
-    var connectOutline = new THREE.Line(lineGeometry, connectMaterial);
-    connectOutline.renderOrder = false;
 
     var attributes = {
         size: {
@@ -343,74 +346,86 @@ function createLine(src, dst, packet) {
             value: []
         }
     };
-    particlesGeo.attributes = attributes;
+    particlesGeometry.attributes = attributes;
+    particlesGeometry.colors = particleColors;
 
-    var lineParticleMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            amplitude: {
-                type: 'f',
-                value: 1.0
-            },
-            color: {
-                type: 'c',
-                value: new THREE.Color(0xffffff)
-            },
-            texture: {
-                type: 't',
-                value: new THREE.ImageUtils.loadTexture('img/particleA.png')
-            }
-        },
-        vertexShader: shaders.vs.line,
-        fragmentShader: shaders.fs.line,
+    texloader.load('img/particleA.png', function(texture) {
 
-        blending: THREE.AdditiveBlending,
-        depthTest: true,
-        depthWrite: false,
-        transparent: true
-        // sizeAttenuation: true,
-    });
-
-    particlesGeo.colors = particleColors;
-    var pSystem = new THREE.Points(particlesGeo, lineParticleMaterial);
-    pSystem.dynamic = true;
-    connectOutline.add(pSystem);
-
-    var vertices = pSystem.geometry.vertices;
-    var valuesSize = attributes.size.value;
-    var valuesColor = attributes.customColor.value;
-
-    for (var v = 0; v < vertices.length; v++) {
-        valuesSize[v] = pSystem.geometry.vertices[v].size;
-        valuesColor[v] = particleColors[v];
-    }
-
-    pSystem.update = function () {
-        for (var i in this.geometry.vertices) {
-            var particle = this.geometry.vertices[i];
-            var path = particle.path;
-
-            particle.lerpN += 0.05;
-            if (particle.lerpN > 1) {
-                particle.lerpN = 0;
-                particle.moveIndex = particle.nextIndex;
-                particle.nextIndex++;
-                if (particle.nextIndex >= path.length) {
-                    particle.moveIndex = 0;
-                    particle.nextIndex = 1;
+/*
+        var lineParticleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                amplitude: {
+                    type: 'f',
+                    value: 1.0
+                },
+                color: {
+                    type: 'c',
+                    value: new THREE.Color(0xffffff)
+                },
+                texture: {
+                    type: 't',
+                    value: texture
                 }
-            }
+            },
+            //vertexShader: shaders.vs.line,
+            //fragmentShader: shaders.fs.line,
 
-            var currentPoint = path[particle.moveIndex];
-            var nextPoint = path[particle.nextIndex];
+            blending: THREE.AdditiveBlending,
+            depthTest: true,
+            size: 40,
+            depthWrite: false,
+            //sizeAttenuation: true,
+            transparent: true
+        });
+*/
 
+        var lineParticleMaterial = new THREE.PointsMaterial({
+            size: 40,
+            color: 0xffffff,
+            transparent: true
+        });
 
-            particle.copy(currentPoint);
-            particle.lerp(nextPoint, particle.lerpN);
+        var pSystem = new THREE.Points(particlesGeometry, lineParticleMaterial);
+        pSystem.dynamic = true;
+
+        var vertices = pSystem.geometry.vertices;
+        var valuesSize = attributes.size.value;
+        var valuesColor = attributes.customColor.value;
+
+        for (var v = 0; v < vertices.length; v++) {
+            valuesSize[v] = pSystem.geometry.vertices[v].size;
+            valuesColor[v] = particleColors[v];
         }
-        this.geometry.verticesNeedUpdate = true;
-    };
 
-    return connectOutline;
+        pSystem.update = function () {
+            for (var i in this.geometry.vertices) {
+                var particle = this.geometry.vertices[i];
+                var path = particle.path;
+
+                particle.lerpN += 0.05;
+                if (particle.lerpN > 1) {
+                    particle.lerpN = 0;
+                    particle.moveIndex = particle.nextIndex;
+                    particle.nextIndex++;
+                    if (particle.nextIndex >= path.length) {
+                        particle.moveIndex = 0;
+                        particle.nextIndex = 1;
+                    }
+                }
+
+                var currentPoint = path[particle.moveIndex];
+                var nextPoint = path[particle.nextIndex];
+
+                particle.copy(currentPoint);
+                particle.lerp(nextPoint, particle.lerpN);
+            }
+            this.geometry.verticesNeedUpdate = true;
+        };
+        console.log('pSystem:', pSystem);
+        line.add(pSystem);
+    });
+    
+    return line;
 }
 
 // https://github.com/stemkoski/stemkoski.github.com/blob/master/Three.js/Sprite-Text-Labels.html
@@ -433,15 +448,9 @@ function roundRect(ctx, x, y, w, h, r) {
 function makeTextSprite(message, parameters) {
     if (parameters === undefined) parameters = {};
 
-    var fontface = parameters.hasOwnProperty('fontface') ?
-        parameters['fontface'] : 'Arial';
-
-    var fontsize = parameters.hasOwnProperty('fontsize') ?
-        parameters['fontsize'] : 72;
-
-    var borderThickness = parameters.hasOwnProperty('borderThickness') ?
-        parameters['borderThickness'] : 4;
-
+    var fontface = parameters.hasOwnProperty('fontface') ? parameters['fontface'] : 'Arial';
+    var fontsize = parameters.hasOwnProperty('fontsize') ? parameters['fontsize'] : 72;
+    var borderThickness = parameters.hasOwnProperty('borderThickness') ? parameters['borderThickness'] : 4;
     var borderColor = parameters.hasOwnProperty('borderColor') ?
         parameters['borderColor'] : {
             r: 0,
@@ -449,7 +458,6 @@ function makeTextSprite(message, parameters) {
             b: 0,
             a: 1.0
         };
-
     var backgroundColor = parameters.hasOwnProperty('backgroundColor') ?
         parameters['backgroundColor'] : {
             r: 255,
@@ -463,42 +471,57 @@ function makeTextSprite(message, parameters) {
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
     context.font = 'Bold ' + fontsize + 'px ' + fontface;
+    context.strokeStyle = 'rgba(' + borderColor.r + ',' + borderColor.g + ',' + borderColor.b + ',' + borderColor.a + ')';
+    context.fillStyle = 'rgba(' + backgroundColor.r + ',' + backgroundColor.g + ',' + backgroundColor.b + ',' + backgroundColor.a + ')';
+    context.lineWidth = borderThickness;
 
     // get size data (height depends only on font size)
     var metrics = context.measureText(message);
     var textWidth = metrics.width;
+    canvas.width = textWidth + borderThickness;
+    canvas.height = fontsize * 1.4 + borderThickness;
+    //canvas.width = canvas.width * 2;
+    //canvas.height = canvas.height * 2;
+    console.log('canvas', canvas);
 
-    // background color
-    context.fillStyle = 'rgba(' + backgroundColor.r + ',' + backgroundColor.g + ',' + backgroundColor.b + ',' + backgroundColor.a + ')';
-    // border color
-    context.strokeStyle = 'rgba(' + borderColor.r + ',' + borderColor.g + ',' + borderColor.b + ',' + borderColor.a + ')';
+    roundRect(
+        context,
+        0,0,
+        canvas.width,
+        canvas.height,
+        12
+    );
 
-    context.lineWidth = borderThickness;
-    roundRect(context, borderThickness / 2, borderThickness / 2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
-    // 1.4 is extra height factor for text below baseline: g,j,p,q.
-
-    // text color
     context.fillStyle = 'rgba(0, 0, 0, 1.0)';
-
     context.fillText(message, borderThickness, fontsize + borderThickness);
-
-    // canvas contents will be used for a texture
     var texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
 
+    var material = new THREE.MeshBasicMaterial( {map: texture, side:THREE.DoubleSide } );
+    material.transparent = true;
+
+    var sprite = new THREE.Mesh(
+        new THREE.PlaneGeometry(canvas.width, canvas.height),
+        material
+    );
+
+/*
     var spriteMaterial = new THREE.SpriteMaterial({
         map: texture,
         //useScreenCoordinates: false,
         //alignment: spriteAlignment
     });
     var sprite = new THREE.Sprite(spriteMaterial);
-
+    //var w = textWidth + borderThickness, h = fontsize * 1.4 + borderThickness;
+    //sprite.position.set(w * 0.5, h * 0.5, -9999);
     sprite.scale.set(100, 50, 1.0);
+*/
+
     return sprite;
 }
 
 function init() {
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1.0, 1000000);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1.0, 100000);
     camera.position.z = 3000;
 
     scene = new THREE.Scene();
@@ -528,7 +551,7 @@ function init() {
     monoControl = new THREE.OrbitControls(camera, renderer.domElement);
     monoControl.rotateSpeed = 0.5;
     monoControl.minDistance = 500;
-    monoControl.maxDistance = 6000;
+    monoControl.maxDistance = 60000;
 
     //var light = new THREE.DirectionalLight(0xffffff);
     //light.position.set(1, 1, 1).normalize();
@@ -603,7 +626,7 @@ socket.on('packet', function (packet) {
             break;
         }
     }
-    console.log('domains', domains);
+    //console.log('domains', domains);
     if (isNew) {
         var gate = createGate(warnColor);
         gate.position.set(
@@ -613,9 +636,16 @@ socket.on('packet', function (packet) {
         );
         scene.add(gate);
 
-        var spritey = makeTextSprite(
+        domains.push({
+            hostname: [packet.hostname[0]],
+            domain: domain,
+            object: gate
+        });
+
+/*
+        var sprite = makeTextSprite(
             domain, {
-                fontsize: 96,
+                fontsize: 48,
                 borderColor: {
                     r: 255,
                     g: 0,
@@ -630,17 +660,16 @@ socket.on('packet', function (packet) {
                 }
             }
         );
-        spritey.position.set(gate.position.x + 1000, gate.position.y + 1000, gate.position.z + 1000);
-        scene.add(spritey);
+        sprite.position.set(
+            gate.position.x + 1000,
+            gate.position.y + 1000,
+            gate.position.z + 1000
+        );
+        scene.add(sprite);
+*/
 
         var line = createLine(origin, gate.position, packet);
-        conenecters.add(line);
-
-        domains.push({
-            hostname: [packet.hostname[0]],
-            domain: domain,
-            object: gate
-        });
+        scene.add(line);
     }
     //console.log('domains', domains);
 });
@@ -649,7 +678,7 @@ var rotate = new THREE.Vector3();
 var rotateTemp = new THREE.Vector3();
 var rotateDelta = new THREE.Vector3();
 socket.on('sensor', function (sensor) {
-    //console.log(sensor);
+    console.log(sensor);
 
     if (monoControl.enabled === true) {
 

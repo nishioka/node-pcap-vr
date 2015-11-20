@@ -3,8 +3,9 @@
 var express = require('express');
 var router = express.Router();
 
-var dns = require('dns');
+var util = require('util');
 var os = require('os');
+var dns = require('dns');
 
 var io = require.main.exports.io;
 
@@ -20,22 +21,40 @@ var cap = new Cap();
 var linkType;
 var buffer = new Buffer(65535);
 var hostAddress;
-dns.lookup(os.hostname(), function (err, address) {
-    hostAddress = address;
-    linkType = cap.open(
-        Cap.findDevice(address),
-        'tcp and port 80',
-        10 * 1024 * 1024,
-        buffer
-    );
-    cap.setMinBytes && cap.setMinBytes(0);
+var hostname = os.hostname();
+console.log('hostname:', hostname);
+var devicelist = Cap.deviceList();
+devicelist.forEach(function (device) {
+    if (device.description !== 'Oracle') {
+        console.log('device:', util.inspect(device, false, null));
+        device.addresses.forEach(function (address) {
+            if (address.addr.match(/((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])([.](?!$)|$)){4}/)) {
+                if (address.addr !== '0.0.0.0') {
+                    console.log('device:address ', address.addr);
+                    hostAddress = address.addr;
+                    linkType = cap.open(
+                        Cap.findDevice(address.addr),
+                        'tcp and port 80',
+                        10 * 1024 * 1024,
+                        buffer
+                    );
+                    cap.setMinBytes && cap.setMinBytes(0);
+                }
+            }
+        });
+    }
 });
 
 var emitPacket = function(packet) {
-    return function(err, addresse) {
+    return function(err, address) {
         if (!err) {
-            packet.hostname = addresse;
+            packet.hostname = address[0];
             io.sockets.emit('packet', packet);
+            console.log('packet:', util.inspect(packet, false, null));
+/*
+        } else {
+            console.log('ERROR:', err);
+*/
         }
     };
 };
