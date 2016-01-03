@@ -264,11 +264,11 @@
     "wsh": false,
 
     // YUIの用意しているオブジェクトがグローバル宣言されていることになる。
-    "yui": false
+    "yui": false,
 
 
     /*
     * カスタムグローバルキーワードの設定
     */
-    //"predef": ["Backbone"]
+    "predef": ["THREE", "TWEEN", "io", "ShaderLoader", "Promise"]
 }

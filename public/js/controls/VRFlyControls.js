@@ -1,7 +1,9 @@
-/* global THREE:false, PositionSensorVRDevice:false */
+'use strict';
+
+/* global PositionSensorVRDevice:false */
 
 /**
- * @author James Baicoianu / http://www.baicoianu.com/
+ * Original by James Baicoianu / http://www.baicoianu.com/
  */
 
 THREE.VRFlyControls = function(object, domElement, callback) {
@@ -9,7 +11,9 @@ THREE.VRFlyControls = function(object, domElement, callback) {
     this.object = object;
 
     this.domElement = (domElement !== undefined) ? domElement : document;
-    if (domElement) this.domElement.setAttribute('tabindex', -1);
+    if (domElement) {
+        this.domElement.setAttribute('tabindex', -1);
+    }
 
     this.plane = new THREE.Object3D();
 
@@ -361,8 +365,8 @@ THREE.VRFlyControls = function(object, domElement, callback) {
 
     window.addEventListener('keydown', bind(this, this.keydown), false);
     window.addEventListener('keyup', bind(this, this.keyup), false);
-    window.addEventListener("gamepadconnected", bind(this, this.connecthandler), false);
-    window.addEventListener("gamepaddisconnected", bind(this, this.disconnecthandler), false);
+    window.addEventListener('gamepadconnected', bind(this, this.connecthandler), false);
+    window.addEventListener('gamepaddisconnected', bind(this, this.disconnecthandler), false);
 
     this.updateMovementVector();
     this.updateRotationVector();

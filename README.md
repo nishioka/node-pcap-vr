@@ -1,6 +1,7 @@
 # Packet viewer for Firefox VR
 
-GHOST IN THE SHELL like something for a view of the traffic.
+
+Something like Ghost in the Shell for a view of the network traffic.
 
 ![Screen Shot](https://github.com/nishioka/node-pcap-vr/raw/master/public/img/ss.png "Screen Shot")
 

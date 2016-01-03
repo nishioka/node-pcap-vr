@@ -1,4 +1,3 @@
-/*global THREE:false, TWEEN:false, io:false, ShaderLoader:false, Promise:false, HMDVRDevice:false, PositionSensorVRDevice:false*/
 
 'use strict';
 
@@ -136,19 +135,19 @@ function onkey(event) {
 }
 
 function createGate(color) {
-    /*
+/*
     var cylinderTexture = new THREE.ImageUtils.loadTexture('image/Band.png');
     cylinderTexture.repeat.set(5, 1);
     cylinderTexture.offset.x = Math.random();
-    */
+*/
     var gate = new THREE.Object3D();
 
     var cylinderMaterial = new THREE.MeshBasicMaterial({
         side: THREE.DoubleSide,
-        color: color
-            //map: cylinderTexture,
-            //transparent: true,
-            //opacity: 0.5
+        color: color,
+        //map: cylinderTexture,
+        transparent: false,
+        //opacity: 0.5
     });
 
     var sphere = new THREE.Object3D();
@@ -169,74 +168,73 @@ function createGate(color) {
 
     var plate = new THREE.Object3D();
 
-    texloader.load('img/InterGate.png', function(texture) {
-        var interGateGeometry = new THREE.PlaneBufferGeometry(600, 600, 100, 100);
-        var interGateMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                texture: {
-                    type: 't',
-                    value: texture
-                },
-                uSphereRadius2: {
-                    type: 'f',
-                    value: 500
-                }
+    var interGateTexture = texloader.load('img/InterGate.png');
+    var interGateGeometry = new THREE.PlaneBufferGeometry(600, 600, 100, 100);
+    var interGateMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            texture: {
+                type: 't',
+                value: interGateTexture
             },
-            vertexShader: shaders.vs.gate,
-            fragmentShader: shaders.fs.gate,
-            //wireframe: true
-            side: THREE.DoubleSide,
-            transparent: true
-        });
-        var interGateMesh = new THREE.Mesh(interGateGeometry, interGateMaterial);
-
-        interGateMesh.position.z += 450;
-        plate.add(interGateMesh);
-
-        var newMesh = interGateMesh.clone();
-        newMesh.position.z += 20;
-        plate.add(newMesh);
-
-        newMesh = interGateMesh.clone();
-        newMesh.position.z += 40;
-        plate.add(newMesh);
+            uSphereRadius2: {
+                type: 'f',
+                value: 500
+            }
+        },
+        vertexShader: shaders.vs.gate,
+        fragmentShader: shaders.fs.gate,
+        side: THREE.DoubleSide,
+        transparent: true
     });
+    var interGateMesh = new THREE.Mesh(interGateGeometry, interGateMaterial);
 
-    texloader.load('img/Gate.png', function(texture) {
-        var gateGeometry = new THREE.PlaneBufferGeometry(1000, 1000, 100, 100);
-        var gateMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                texture: {
-                    type: 't',
-                    value: texture
-                },
-                uSphereRadius2: {
-                    type: 'f',
-                    value: 800
-                }
+    interGateMesh.position.z += 450;
+    plate.add(interGateMesh);
+
+    var newMesh = interGateMesh.clone();
+    newMesh.position.z += 20;
+    plate.add(newMesh);
+
+    newMesh = interGateMesh.clone();
+    newMesh.position.z += 40;
+    plate.add(newMesh);
+
+    var gateTexture = texloader.load('img/Gate.png');
+    var gateGeometry = new THREE.PlaneBufferGeometry(1000, 1000, 100, 100);
+    var gateMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            texture: {
+                type: 't',
+                value: gateTexture
             },
-            vertexShader: shaders.vs.gate,
-            fragmentShader: shaders.fs.gate,
-            //wireframe: true
-            side: THREE.DoubleSide,
-            transparent: true
-        });
-        var gateMesh = new THREE.Mesh(gateGeometry, gateMaterial);
-        gateMesh.position.z += 20;
-        plate.add(gateMesh);
-
-        var newObj = plate.clone();
-        newObj.rotation.y = Math.PI;
-        plate.add(newObj);
-
-        var ObjX = plate.clone();
-        var ObjY = plate.clone();
-        ObjX.rotation.y = Math.PI / 2;
-        ObjY.rotation.x = Math.PI / 2;
-
-        plate.add(ObjX);
-        plate.add(ObjY);
+            uSphereRadius2: {
+                type: 'f',
+                value: 800
+            }
+        },
+        vertexShader: shaders.vs.gate,
+        fragmentShader: shaders.fs.gate,
+        //blending: THREE.AdditiveBlending,
+        //depthTest: false,
+        //wireframe: true
+        side: THREE.DoubleSide,
+        transparent: true
     });
+    var gateMesh = new THREE.Mesh(gateGeometry, gateMaterial);
+    gateMesh.position.z += 20;
+    plate.add(gateMesh);
+
+    var newObj = plate.clone();
+    newObj.rotation.y = Math.PI;
+    plate.add(newObj);
+
+    var ObjX = plate.clone();
+    var ObjY = plate.clone();
+    ObjX.rotation.y = Math.PI / 2;
+    ObjY.rotation.x = Math.PI / 2;
+
+    plate.add(ObjX);
+    plate.add(ObjY);
 
     gate.add(plate);
 
@@ -291,7 +289,6 @@ function createLine(src, dst, packet) {
 
     // make a final mesh out of this composite
     var connectMaterial = new THREE.LineBasicMaterial({
-        //color: 0xffffff,
         color: lineColor,
         opacity: 1.0,
         blending: THREE.AdditiveBlending,
@@ -306,7 +303,8 @@ function createLine(src, dst, packet) {
     line.add(connectLine);
 
     //線上を移動する光点
-    var particlesGeometry = new THREE.Geometry();
+    var particleGeometry = new THREE.Geometry();
+    //var particleGeometry = new THREE.BufferGeometry();
     var particleColor = lineColor.clone();
     var points = lineGeometry.vertices;
     var particleSize = 40;
@@ -314,7 +312,7 @@ function createLine(src, dst, packet) {
 
     var particleCount = Math.floor(80 / 3) + 1;
     particleCount = constrain(particleCount, 1, 100);
-    console.log('particleCount', particleCount);
+
     for (var s = 0; s < particleCount; s++) {
         // var rIndex = Math.floor( Math.random() * points.length );
         // var rIndex = Math.min(s,points.length-1);
@@ -331,8 +329,8 @@ function createLine(src, dst, packet) {
         }
         particle.lerpN = 0;
         particle.path = points;
-        particlesGeometry.vertices.push(particle);
         particle.size = particleSize;
+        particleGeometry.vertices.push(particle);
         particleColors.push(particleColor);
     }
 
@@ -346,84 +344,57 @@ function createLine(src, dst, packet) {
             value: []
         }
     };
-    particlesGeometry.attributes = attributes;
-    particlesGeometry.colors = particleColors;
+    particleGeometry.attributes = attributes;
+    particleGeometry.colors = particleColors;
 
-    texloader.load('img/particleA.png', function(texture) {
-
-/*
-        var lineParticleMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                amplitude: {
-                    type: 'f',
-                    value: 1.0
-                },
-                color: {
-                    type: 'c',
-                    value: new THREE.Color(0xffffff)
-                },
-                texture: {
-                    type: 't',
-                    value: texture
-                }
-            },
-            //vertexShader: shaders.vs.line,
-            //fragmentShader: shaders.fs.line,
-
-            blending: THREE.AdditiveBlending,
-            depthTest: true,
-            size: 40,
-            depthWrite: false,
-            //sizeAttenuation: true,
-            transparent: true
-        });
-*/
-
-        var lineParticleMaterial = new THREE.PointsMaterial({
-            size: 40,
-            color: 0xffffff,
-            transparent: true
-        });
-
-        var pSystem = new THREE.Points(particlesGeometry, lineParticleMaterial);
-        pSystem.dynamic = true;
-
-        var vertices = pSystem.geometry.vertices;
-        var valuesSize = attributes.size.value;
-        var valuesColor = attributes.customColor.value;
-
-        for (var v = 0; v < vertices.length; v++) {
-            valuesSize[v] = pSystem.geometry.vertices[v].size;
-            valuesColor[v] = particleColors[v];
-        }
-
-        pSystem.update = function () {
-            for (var i in this.geometry.vertices) {
-                var particle = this.geometry.vertices[i];
-                var path = particle.path;
-
-                particle.lerpN += 0.05;
-                if (particle.lerpN > 1) {
-                    particle.lerpN = 0;
-                    particle.moveIndex = particle.nextIndex;
-                    particle.nextIndex++;
-                    if (particle.nextIndex >= path.length) {
-                        particle.moveIndex = 0;
-                        particle.nextIndex = 1;
-                    }
-                }
-
-                var currentPoint = path[particle.moveIndex];
-                var nextPoint = path[particle.nextIndex];
-
-                particle.copy(currentPoint);
-                particle.lerp(nextPoint, particle.lerpN);
-            }
-            this.geometry.verticesNeedUpdate = true;
-        };
-        console.log('pSystem:', pSystem);
-        line.add(pSystem);
+    var particleTexture = texloader.load('img/Particle.png');
+    //particleTexture.minFilter = THREE.LinearFilter;
+    var particleMaterial = new THREE.PointsMaterial({
+        size: 200,
+        map: particleTexture,
+        vertexColors: THREE.VertexColors,
+        transparent: true
     });
+
+    var particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    particleSystem.dynamic = true;
+
+    var vertices = particleSystem.geometry.vertices;
+    var valuesSize = attributes.size.value;
+    var valuesColor = attributes.customColor.value;
+
+    for (var v = 0; v < vertices.length; v++) {
+        valuesSize[v] = particleSystem.geometry.vertices[v].size;
+        valuesColor[v] = particleColors[v];
+    }
+    console.log(attributes);
+
+    particleSystem.update = function () {
+        for (var i in this.geometry.vertices) {
+            var particle = this.geometry.vertices[i];
+            var path = particle.path;
+
+            particle.lerpN += 0.05;
+            if (particle.lerpN > 1) {
+                particle.lerpN = 0;
+                particle.moveIndex = particle.nextIndex;
+                particle.nextIndex++;
+                if (particle.nextIndex >= path.length) {
+                    particle.moveIndex = 0;
+                    particle.nextIndex = 1;
+                }
+            }
+
+            var currentPoint = path[particle.moveIndex];
+            var nextPoint = path[particle.nextIndex];
+
+            particle.copy(currentPoint);
+            particle.lerp(nextPoint, particle.lerpN);
+        }
+        this.geometry.verticesNeedUpdate = true;
+    };
+
+    line.add(particleSystem);
     
     return line;
 }
@@ -678,7 +649,7 @@ var rotate = new THREE.Vector3();
 var rotateTemp = new THREE.Vector3();
 var rotateDelta = new THREE.Vector3();
 socket.on('sensor', function (sensor) {
-    console.log(sensor);
+    //console.log(sensor);
 
     if (monoControl.enabled === true) {
 
@@ -693,20 +664,6 @@ socket.on('sensor', function (sensor) {
 
             rotateTemp.set(sensor.gyro.x, sensor.gyro.y, sensor.gyro.z);
         }
-
-/*
-        if (monoControl.noZoom === true) { return; }
-
-        if (dollyDelta.y > 0) {
-            monoControl.dollyIn();
-        } else if (dollyDelta.y < 0) {
-            monoControl.dollyOut();
-        }
-
-        if (monoControl.noPan === true) { return; }
-
-        monoControl.pan(panDelta.x, panDelta.y);
-*/
     }
 });
 
@@ -716,6 +673,3 @@ shaders.shaderSetLoaded = function () {
 
 shaders.load('vs-gate', 'gate', 'vertex');
 shaders.load('fs-gate', 'gate', 'fragment');
-
-shaders.load('vs-line', 'line', 'vertex');
-shaders.load('fs-line', 'line', 'fragment');
