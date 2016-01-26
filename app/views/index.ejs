@@ -17,10 +17,10 @@
     <script src="components/jquery/dist/jquery.min.js"></script>
 
     <script src="js/libs/ShaderLoader.js" type="text/javascript"></script>
-    <script src="js/controls/OrbitControls.js" type="text/javascript"></script>
-    <script src="js/controls/VRFlyControls.js" type="text/javascript"></script>
     <script src="js/vr/VRClient.js" type="text/javascript"></script>
     <script src="js/vr/VREffect.js" type="text/javascript"></script>
+    <script src="js/controls/OrbitControls.js" type="text/javascript"></script>
+    <script src="js/controls/VRFlyControls.js" type="text/javascript"></script>
 
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -52,7 +52,10 @@
             <!-- ------------ No VR detected -------------->
             <div id="getVR" class="white p2 bg-pink rounded2 display-none">
                 <div class="table">
-                    <div class="table-cell left-align pr2 f-small"><span class="light nowrap">Your browser does not support virtual reality.<br>Use <a href="http://mozvr.com/downloads" class="medium nowrap basiclink-white">Firefox with VR</a> and an Oculus Rift<br>to enter the full VR web experience.</span>
+                    <div class="table-cell left-align pr2 f-small">
+                        <span class="light nowrap">
+                            Your browser does not support virtual reality.<br>Use <a href="http://mozvr.com/downloads" class="medium nowrap basiclink-white">Firefox with VR</a> and an Oculus Rift<br>to enter the full VR web experience.
+                      </span>
                     </div>
                     <div class="table-cell">
                         <a href="http://mozvr.com/downloads" class="inline-block bg-lighten2 b2 b-solid b-white hover-blue1 rounded2">

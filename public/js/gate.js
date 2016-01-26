@@ -70,6 +70,7 @@ function animate() {
         renderer.render(scene, camera);
     }
 
+console.log(camera.position, camera.rotation);
     // keep looping
     requestAnimationFrame(animate);
 
@@ -250,7 +251,7 @@ function createGate(color) {
  */
 function createLine(src, dst, packet) {
     var line = new THREE.Object3D();
-    
+
     //GATEを結ぶ線を直角にひく
     var lineGeometry = new THREE.Geometry();
     //var lineColors = [];
@@ -395,7 +396,7 @@ function createLine(src, dst, packet) {
     };
 
     line.add(particleSystem);
-    
+
     return line;
 }
 
